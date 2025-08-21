@@ -1,0 +1,79 @@
+{
+  "name": "dds-column-assist",
+  "displayName": "DDS Column Assist",
+  "description": "Column ruler and edit assistant for IBM i DDS (PF/LF/DSPF) lines with 'A' specification.",
+  "version": "0.0.1",
+  "publisher": "Chri-Masi",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:dds.dspf",
+    "onLanguage:dds.lf",
+    "onLanguage:dds.pf"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "dds-assist.launchUI",
+        "title": "DDS: Edit A-spec line (Column Assist)",
+        "category": "DDS"
+      },
+      {
+        "command": "dds-assist.nextField",
+        "title": "DDS: Vai al campo successivo (PageDown)",
+        "category": "DDS"
+      },
+      {
+        "command": "dds-assist.prevField",
+        "title": "DDS: Vai al campo precedente (PageUp)",
+        "category": "DDS"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "dds-assist.nextField",
+        "key": "pagedown",
+        "when": "editorTextFocus && (editorLangId == dds || editorLangId == dds.dspf || editorLangId == dds.lf || editorLangId == dds.pf)"
+      },
+      {
+        "command": "dds-assist.prevField",
+        "key": "pageup",
+        "when": "editorTextFocus && (editorLangId == dds || editorLangId == dds.dspf || editorLangId == dds.lf || editorLangId == dds.pf)"
+      }
+    ],
+    "languages": [
+      {
+        "id": "dds",
+        "extensions": [".pf", ".lf", ".dspf", ".PF", ".LF", ".DSPF"],
+        "aliases": ["DDS"]
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "dds-assist.launchUI",
+          "when": "editorLangId == dds || editorLangId == dds.dspf || editorLangId == dds.lf || editorLangId == dds.pf"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p .",
+    "watch": "tsc -w -p .",
+    "build": "npm run compile",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/vscode": "^1.75.0",
+    "typescript": "^5.4.0",
+    "vsce": "^2.15.0"
+  },
+  "license": "MIT"
+}
