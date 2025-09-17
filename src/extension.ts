@@ -7,8 +7,16 @@ async function moveToField(direction: 'next' | 'prev') {
   const { editor, doc, lineNum } = ctx;
   // Prendi la riga corrente, pad a 80 sempre (anche se vuota)
   let lineText = doc.lineAt(lineNum).text.padEnd(80);
-  const isASpec = (t: string) => t.length >= 6 && t[5].toUpperCase() === 'A' && t[6] !== '*';
-  const isComment = (t: string) => t.length >= 7 && t[5].toUpperCase() === 'A' && t[6] === '*';
+  const isASpec = (t: string) => {
+    if (t.length < 6) return false;
+    const spec = t[5].toUpperCase();
+    return (spec === 'A' || spec === 'C' || spec === 'D') && t[6] !== '*';
+  };
+  const isComment = (t: string) => {
+    if (t.length < 7) return false;
+    const spec = t[5].toUpperCase();
+    return (spec === 'A' || spec === 'C' || spec === 'D') && t[6] === '*';
+  };
 
   // Se PageUp e la riga corrente è commento: vai alla riga precedente come "campo singolo"
   if (direction === 'prev' && isComment(lineText)) {
@@ -24,7 +32,7 @@ async function moveToField(direction: 'next' | 'prev') {
         return;
       }
       if (isASpec(prevTxt)) {
-        const outline2 = getOutlineForLangId(doc.languageId);
+        const outline2 = getOutlineForLine(doc.languageId, prevTxt);
         const fields2 = buildFieldsFromOutline(outline2, doc.languageId);
         const lastField = fields2[fields2.length - 1];
         // Assicura lunghezza sufficiente
@@ -50,7 +58,7 @@ async function moveToField(direction: 'next' | 'prev') {
     return;
   }
   // Se PageUp e la riga è vuota o non ha A in colonna 6 (non commento):
-  if (direction === 'prev' && (lineText.length < 6 || lineText[5].toUpperCase() !== 'A')) {
+  if (direction === 'prev' && (lineText.length < 6 || !['A','C','D'].includes(lineText[5].toUpperCase()))) {
     const prevLineIdx = lineNum - 1;
     if (prevLineIdx >= 0) {
       const prevRaw = doc.lineAt(prevLineIdx).text;
@@ -70,10 +78,10 @@ async function moveToField(direction: 'next' | 'prev') {
     // Altrimenti, cerca la riga A precedente come prima
     const prev = (() => {
       let l = lineNum - 1;
-      while (l >= 0) {
+        while (l >= 0) {
         const txt = doc.lineAt(l).text.padEnd(80);
-        if (txt.length >= 6 && txt[5].toUpperCase() === 'A' && txt[6] !== '*') {
-          const outline2 = getOutlineForLangId(doc.languageId);
+        if (txt.length >= 6 && ['A','C','D'].includes(txt[5].toUpperCase()) && txt[6] !== '*') {
+          const outline2 = getOutlineForLine(doc.languageId, txt);
           const fields2 = buildFieldsFromOutline(outline2, doc.languageId);
           return { line: l, fields: fields2 };
         }
@@ -92,7 +100,7 @@ async function moveToField(direction: 'next' | 'prev') {
   // Gestione spostamento in avanti da riga non-A o commento
   if (direction === 'next' && !isASpec(lineText)) {
     const nextLine = lineNum + 1;
-    if (nextLine < doc.lineCount) {
+  if (nextLine < doc.lineCount) {
       const nextRaw = doc.lineAt(nextLine).text;
       const nextTxt = nextRaw.padEnd(80);
       if (isComment(nextTxt)) {
@@ -114,8 +122,8 @@ async function moveToField(direction: 'next' | 'prev') {
         return;
       }
       // Prossima riga è A-spec valida: vai al primo campo
-      const outline2 = getOutlineForLangId(doc.languageId);
-      const fields2 = buildFieldsFromOutline(outline2, doc.languageId);
+  const outline2 = getOutlineForLine(doc.languageId, nextTxt);
+  const fields2 = buildFieldsFromOutline(outline2, doc.languageId);
       const f0 = fields2[0];
       // Assicura lunghezza sufficiente
       const currLen = nextRaw.length;
@@ -139,9 +147,9 @@ async function moveToField(direction: 'next' | 'prev') {
     }
   }
 
-  // Consenti il salto solo se la riga corrente è A-spec valida (per PageDown/PageUp intra-riga)
+  // Consenti il salto solo se la riga corrente è una spec valida (A, C o D)
   if (!isASpec(lineText)) return;
-  const outline = getOutlineForLangId(doc.languageId);
+  const outline = getOutlineForLine(doc.languageId, lineText);
   const fields = buildFieldsFromOutline(outline, doc.languageId);
   const posIdx = editor.selection.start.character;
   // Trova il campo attuale o il primo campo dopo il cursore
@@ -159,8 +167,8 @@ async function moveToField(direction: 'next' | 'prev') {
     let l = startLine;
     while (l >= 0 && l < doc.lineCount) {
       const txt = doc.lineAt(l).text.padEnd(80);
-      if (txt.length >= 6 && txt[5].toUpperCase() === 'A' && txt[6] !== '*') {
-        const outline2 = getOutlineForLangId(doc.languageId);
+      if (txt.length >= 6 && ['A','C','D'].includes(txt[5].toUpperCase()) && txt[6] !== '*') {
+        const outline2 = getOutlineForLine(doc.languageId, txt);
         const fields2 = buildFieldsFromOutline(outline2, doc.languageId);
         return { line: l, fields: fields2, docLine: txt };
       }
@@ -253,20 +261,54 @@ async function moveToField(direction: 'next' | 'prev') {
     updateRuler();
   }
 }
-import { commands, ExtensionContext, Range, TextEditorDecorationType, ThemeColor, window, WebviewPanel, ViewColumn, Selection, DecorationOptions, Position } from 'vscode';
-import { buildFieldsFromOutline, getOutlineFor, getOutlineForLangId, replaceSegments } from './spec';
+import { commands, ExtensionContext, Range, TextEditorDecorationType, ThemeColor, window, WebviewPanel, ViewColumn, Selection, DecorationOptions, Position, workspace, ConfigurationTarget, extensions } from 'vscode';
+import { buildFieldsFromOutline, getOutlineFor, getOutlineForLangId, getOutlineForLine, replaceSegments } from './spec';
 
 let rulerDecoration: TextEditorDecorationType | undefined;
 let currentFieldDeco: TextEditorDecorationType | undefined;
 let otherFieldsDeco: TextEditorDecorationType | undefined;
 let currentLine = -1;
+let extensionContext: ExtensionContext | undefined;
 
-const SUPPORTED_LANGIDS = ['dds.dspf', 'dds.lf', 'dds.pf'];
+function getSpecIdForLine(doc: import('vscode').TextDocument, lineText: string) {
+  const lid = (doc.languageId || '').toLowerCase();
+  if (lid.endsWith('.dspf') || doc.languageId === 'dds.dspf') return 'dspf';
+  if (lid.endsWith('.pf') || doc.languageId === 'dds.pf') return 'pf';
+  if (lid.endsWith('.lf') || doc.languageId === 'dds.lf') return 'lf';
+  if (lid.indexOf('rpg') !== -1 || lid.startsWith('rpg')) {
+    if (!lineText || lineText.length < 6) return 'rpgleC';
+    const spec = lineText[5].toUpperCase();
+    return spec === 'D' ? 'rpgleD' : 'rpgleC';
+  }
+  return 'other';
+}
+
+function getEffectiveSetting(doc: import('vscode').TextDocument, specId: string, feature: 'guideline' | 'highlight'): boolean {
+  const cfgKey = `ddsColumnAssist.${feature}.${specId}`;
+  return workspace.getConfiguration().get<boolean>(cfgKey, true);
+}
+
+async function toggleFeature(feature: 'guideline' | 'highlight') {
+  const ctx = getActiveDDSContext();
+  if (!ctx) { window.showInformationMessage(`No active DDS/RPG line to toggle ${feature}.`); return; }
+  const { doc, lineText } = ctx;
+  const specId = getSpecIdForLine(doc, lineText);
+  const cfgKey = `ddsColumnAssist.${feature}.${specId}`;
+  const curr = getEffectiveSetting(doc, specId, feature);
+  const next = !curr;
+  // Update global user settings
+  await workspace.getConfiguration().update(cfgKey, next, ConfigurationTarget.Global);
+  updateRuler();
+  window.showInformationMessage(`${feature === 'guideline' ? 'Guideline' : 'Highlight'} for ${specId} (global) is now ${next ? 'enabled' : 'disabled'}.`);
+}
+
+const SUPPORTED_LANGIDS = ['dds.dspf', 'dds.lf', 'dds.pf', 'rpg', 'rpgle', 'sqlrpgle'];
 function getActiveDDSContext() {
   const editor = window.activeTextEditor;
   if (!editor) return;
   const doc = editor.document;
-  if (!SUPPORTED_LANGIDS.includes(doc.languageId)) return;
+  const lid = (doc.languageId || '').toLowerCase();
+  if (!SUPPORTED_LANGIDS.includes(doc.languageId) && lid.indexOf('rpg') === -1 && lid.indexOf('rpgle') === -1) return;
   const lineNum = editor.selection.start.line;
   const lineText = doc.getText(new Range(lineNum, 0, lineNum, 200)).padEnd(80);
   return { editor, doc, lineNum, lineText };
@@ -303,30 +345,36 @@ function updateRuler() {
   if (!ctx) return clearRuler();
   const { editor, doc, lineNum, lineText } = ctx;
 
-  // Only for 'A' spec line and not comment (col 7 == '*')
-  if (lineText.length < 6 || lineText[5].toUpperCase() !== 'A' || lineText[6] === '*') {
-    return clearRuler();
-  }
+  // Only for 'A', 'C' or 'D' spec line and not comment (col 7 == '*')
+  if (lineText.length < 6) return clearRuler();
+  const specChar = lineText[5].toUpperCase();
+  if (!['A','C','D'].includes(specChar) || lineText[6] === '*') return clearRuler();
 
-  const outline = getOutlineForLangId(doc.languageId);
+  const outline = getOutlineForLine(doc.languageId, lineText);
   const deco = ensureDecoration();
   ensureFieldDecorations();
-
+  // Guideline toggle: check per-file/spec and global config
+  const specId = getSpecIdForLine(doc, lineText);
+  const showGuideline = getEffectiveSetting(doc, specId, 'guideline');
   const targetLine = lineNum > 0 ? lineNum - 1 : lineNum;
-  editor.setDecorations(deco, [
-    {
-      range: new Range(targetLine, 0, targetLine, 80),
-      renderOptions: {
-        before: {
-          contentText: outline,
-          color: new ThemeColor('editorLineNumber.foreground'),
-          textDecoration: 'none',
-          // VS Code uses editor font, which is monospaced; avoid extra spacing
-          // white-space: pre is default for contentText
+  if (showGuideline) {
+    const deco = ensureDecoration();
+    editor.setDecorations(deco, [
+      {
+        range: new Range(targetLine, 0, targetLine, 80),
+        renderOptions: {
+          before: {
+            contentText: outline,
+            color: new ThemeColor('editorLineNumber.foreground'),
+            textDecoration: 'none',
+          }
         }
       }
-    }
-  ]);
+    ]);
+  } else {
+    const dec = ensureDecoration();
+    editor.setDecorations(dec, []);
+  }
 
   // Highlight fields on the current line
   const fields = buildFieldsFromOutline(outline, doc.languageId);
@@ -337,18 +385,29 @@ function updateRuler() {
     if (posIdx >= f.start && posIdx <= f.end) { activeIndex = i; break; }
   }
 
+  // Highlight toggle: per-file/spec and global
+  const showHighlight = getEffectiveSetting(doc, specId, 'highlight');
   const otherDecos: DecorationOptions[] = [];
+  let currentOpt: DecorationOptions | undefined;
   for (let i = 0; i < fields.length; i++) {
     const f = fields[i];
     const range = new Range(lineNum, f.start, lineNum, f.end + 1);
     const opt: DecorationOptions = { range, hoverMessage: fields[i].label };
     if (i === activeIndex) {
-      editor.setDecorations(currentFieldDeco!, [opt]);
+      currentOpt = opt;
     } else {
       otherDecos.push(opt);
     }
   }
-  editor.setDecorations(otherFieldsDeco!, otherDecos);
+  if (showHighlight) {
+    if (currentOpt) editor.setDecorations(currentFieldDeco!, [currentOpt]);
+    else editor.setDecorations(currentFieldDeco!, []);
+    editor.setDecorations(otherFieldsDeco!, otherDecos);
+  } else {
+    // Clear any previous decorations so highlight doesn't stick on a line
+    if (currentFieldDeco) editor.setDecorations(currentFieldDeco, []);
+    if (otherFieldsDeco) editor.setDecorations(otherFieldsDeco, []);
+  }
 
   currentLine = lineNum;
 }
@@ -368,8 +427,10 @@ function getFieldsForCurrentLine() {
   const ctx = getActiveDDSContext();
   if (!ctx) return;
   const { doc, lineNum, lineText } = ctx;
-  if (lineText.length < 6 || lineText[5].toUpperCase() !== 'A' || lineText[6] === '*') return;
-  const outline = getOutlineForLangId(doc.languageId);
+  if (lineText.length < 6) return;
+  const specC = lineText[5].toUpperCase();
+  if (!['A','C','D'].includes(specC) || lineText[6] === '*') return;
+  const outline = getOutlineForLine(doc.languageId, lineText);
   const fields = buildFieldsFromOutline(outline, doc.languageId);
   return { ...ctx, outline, fields };
 }
@@ -492,12 +553,184 @@ export function activate(context: ExtensionContext) {
     commands.registerCommand('dds-assist.launchUI', launchUI),
     commands.registerCommand('dds-assist.nextField', () => moveToField('next')),
     commands.registerCommand('dds-assist.prevField', () => moveToField('prev')),
+    commands.registerCommand('dds-assist.toggleGuideline', () => toggleFeature('guideline')),
+    commands.registerCommand('dds-assist.toggleHighlight', () => toggleFeature('highlight')),
+  commands.registerCommand('dds-assist.checkRpgle', () => checkRpgleConflict()),
     window.onDidChangeTextEditorSelection(() => updateRuler()),
     window.onDidChangeActiveTextEditor(() => updateRuler())
   );
 
+  extensionContext = context;
   // Initial attempt
   updateRuler();
+  // Check for potential conflicts with vscode-rpgle and offer to mitigate
+  checkRpgleConflict();
+}
+
+async function checkRpgleConflict() {
+  try {
+    // Try to find any installed extension that looks like an RPGLE helper
+    const rpgleExt = extensions.all.find((e) => {
+      try {
+        const id = (e.id || '').toLowerCase();
+        const pkg = e.packageJSON || {};
+        const name = (pkg.name || '').toLowerCase();
+        const display = (pkg.displayName || '').toLowerCase();
+        return id.includes('rpgle') || name.includes('rpgle') || display.includes('rpgle') || id.includes('vscode-rpgle') || name.includes('vscode-rpgle') || display.includes('vscode-rpgle');
+      } catch (err) {
+        return false;
+      }
+    });
+    if (!rpgleExt) return;
+
+    // If user previously asked not to show this prompt, skip
+    try {
+      const hidden = extensionContext?.globalState.get<boolean>('dds-assist.rpglePromptHidden');
+      if (hidden) return;
+    } catch (e) {
+      // ignore
+    }
+
+    const choice = await window.showInformationMessage(
+      'Detected installed "vscode-rpgle" extension. DDS Column Assist guideline/highlight may conflict with it. Do you want to disable the rpgle ruler setting to avoid conflicts?',
+      'Yes', 'No', "Don't show again"
+    );
+    if (choice === "Don't show again") {
+      try {
+        await extensionContext?.globalState.update('dds-assist.rpglePromptHidden', true);
+      } catch (e) {
+        // ignore
+      }
+      return;
+    }
+    if (choice !== 'Yes') return;
+
+    // Try to update the rpgle extension setting
+    try {
+      await workspace.getConfiguration().update('vscode-rpgle.rulerEnabledByDefault', false, ConfigurationTarget.Global);
+      window.showInformationMessage('Updated global setting "vscode-rpgle.rulerEnabledByDefault" to false.');
+    } catch (err) {
+      window.showErrorMessage('Failed to update vscode-rpgle setting: ' + String(err));
+    }
+
+    // Add an unbind override to user's keybindings.json to disable the rpgle toggle shortcut
+    try {
+      const kbPath = await getUserKeybindingsPath();
+      if (!kbPath) {
+        window.showWarningMessage('Could not locate user keybindings.json to add unbind entry for rpgle.');
+        return;
+      }
+      const fs = require('fs');
+      const unbindEntry = {
+        key: 'shift+f4',
+        command: '-vscode-rpgle.assist.toggleFixedRuler',
+        when: "editorLangId == 'rpgle'"
+      };
+      if (!fs.existsSync(kbPath)) {
+        // create file with the unbind entry
+        fs.writeFileSync(kbPath, JSON.stringify([unbindEntry], null, 2), 'utf8');
+        window.showInformationMessage('Added unbind entry to user keybindings.json to disable rpgle toggle shortcut.');
+        return;
+      }
+      const content = fs.readFileSync(kbPath, 'utf8');
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(content);
+      } catch (e) {
+        // If JSON parse fails (file may include comments), attempt to insert before the final closing bracket if present
+        if (content.indexOf("-vscode-rpgle.assist.toggleFixedRuler") !== -1) {
+          window.showInformationMessage('User keybindings.json already contains an unbind entry for rpgle.');
+          return;
+        }
+        const toInsert = JSON.stringify(unbindEntry, null, 2);
+        const lastBracket = content.lastIndexOf(']');
+        if (lastBracket !== -1) {
+          // Determine whether we need a preceding comma
+          const beforeSlice = content.slice(0, lastBracket);
+          const trimmedBefore = beforeSlice.trimEnd();
+          const needsComma = !trimmedBefore.endsWith('[');
+          const insertText = (needsComma ? ',\n' : '\n') + toInsert + '\n';
+          const newContent = content.slice(0, lastBracket) + insertText + content.slice(lastBracket);
+          fs.writeFileSync(kbPath, newContent, 'utf8');
+          window.showInformationMessage('Inserted unbind entry into user keybindings.json.');
+          return;
+        }
+        // As fallback, append the entry (best effort)
+        const appendText = '\n' + toInsert + '\n';
+        fs.appendFileSync(kbPath, appendText, 'utf8');
+        window.showInformationMessage('Appended unbind entry to user keybindings.json (fallback append).');
+        return;
+      }
+      if (!Array.isArray(parsed)) {
+        window.showWarningMessage('Unexpected format for user keybindings.json; cannot safely add unbind entry.');
+        return;
+      }
+      // Remove any existing positive bindings for the rpgle toggle command
+      const beforeLen = parsed.length;
+      const filtered = parsed.filter((e: any) => (e && e.command) ? e.command !== 'vscode-rpgle.assist.toggleFixedRuler' : true);
+      if (filtered.length !== beforeLen) {
+        fs.writeFileSync(kbPath, JSON.stringify(filtered, null, 2), 'utf8');
+        window.showInformationMessage('Removed existing rpgle keybinding(s) for "vscode-rpgle.assist.toggleFixedRuler" from user keybindings.json.');
+      }
+      // Reload parsed array variable to the filtered list for further processing
+      parsed = filtered;
+      const existsUnbind = parsed.some((e: any) => e.command === '-vscode-rpgle.assist.toggleFixedRuler' && e.key === 'shift+f4');
+      if (existsUnbind) {
+        window.showInformationMessage('User keybindings.json already contains the unbind for rpgle.');
+        return;
+      }
+      parsed.push(unbindEntry);
+      fs.writeFileSync(kbPath, JSON.stringify(parsed, null, 2), 'utf8');
+      window.showInformationMessage('Added unbind entry to user keybindings.json to disable rpgle toggle shortcut.');
+    } catch (err) {
+      window.showErrorMessage('Error while attempting to update keybindings.json: ' + String(err));
+    }
+
+  } catch (err) {
+    console.error('checkRpgleConflict error', err);
+  }
+}
+
+function removeKeybindingLines(text: string, commandId: string) {
+  // Remove any JSON object that contains the commandId. This uses a regex approach
+  // to find {...} blocks containing the command and removes them including an optional
+  // trailing comma. It's a best-effort textual cleanup for fallback scenarios.
+  try {
+    const pattern = new RegExp('\\{[\\s\\S]*?"command"\\s*:\\s*"' + commandId.replace(/[-\\/\\^$*+?.()|[\]{}]/g, '\\$&') + '"[\\s\\S]*?\\},?', 'g');
+    const cleaned = text.replace(pattern, '');
+    // Also remove any leftover double commas or trailing commas before closing bracket
+    let result = cleaned.replace(/,\s*,/g, ',');
+    result = result.replace(/,\s*\]/g, ']');
+    return result;
+  } catch (e) {
+    return text;
+  }
+}
+
+async function getUserKeybindingsPath(): Promise<string | undefined> {
+  try {
+    // VS Code user settings path varies by platform and installation; try to derive from env
+    const homedir = require('os').homedir();
+    const platform = process.platform;
+    let base: string | undefined;
+    if (platform === 'win32') {
+      base = process.env.APPDATA;
+    } else if (platform === 'darwin') {
+      base = homedir + '/Library/Application Support';
+    } else {
+      base = homedir + '/.config';
+    }
+    if (!base) return undefined;
+    const candidate = require('path').join(base, 'Code', 'User', 'keybindings.json');
+    const fs = require('fs');
+    if (fs.existsSync(candidate)) return candidate;
+    // Try alternative path for VSCode - Insiders or different product name
+    const candidate2 = require('path').join(base, 'Code - Insiders', 'User', 'keybindings.json');
+    if (fs.existsSync(candidate2)) return candidate2;
+    return undefined;
+  } catch (e) {
+    return undefined;
+  }
 }
 
 export function deactivate() {

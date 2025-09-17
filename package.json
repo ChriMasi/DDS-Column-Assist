@@ -1,8 +1,8 @@
 {
-  "name": "dds-column-assist",
-  "displayName": "DDS Column Assist",
-  "description": "Column ruler and edit assistant for IBM i DDS (PF/LF/DSPF) lines with 'A' specification.",
-  "version": "0.0.1",
+  "name": "ibmi-column-assist",
+  "displayName": "IBM I Column Assist",
+  "description": "Column ruler and edit assistant for IBM i DDS (PF/LF/DSPF) lines with 'A' specification. and RPGLE lines with 'F' and 'C' Specification",
+  "version": "0.1.1",
   "publisher": "Chri-Masi",
   "engines": {
     "vscode": "^1.75.0"
@@ -13,24 +13,43 @@
   "activationEvents": [
     "onLanguage:dds.dspf",
     "onLanguage:dds.lf",
-    "onLanguage:dds.pf"
+    "onLanguage:dds.pf",
+  "onLanguage:rpg",
+  "onLanguage:rpgle",
+  "onLanguage:sqlrpgle"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "dds-assist.launchUI",
-        "title": "DDS: Edit A-spec line (Column Assist)",
+        "title": "IBM I: Edit A-spec line (Column Assist)",
         "category": "DDS"
       },
       {
         "command": "dds-assist.nextField",
-        "title": "DDS: Vai al campo successivo (PageDown)",
+        "title": "IBM I: Vai al campo successivo (PageDown)",
         "category": "DDS"
       },
       {
         "command": "dds-assist.prevField",
-        "title": "DDS: Vai al campo precedente (PageUp)",
+        "title": "IBM I: Vai al campo precedente (PageUp)",
+        "category": "DDS"
+      },
+      {
+        "command": "dds-assist.toggleGuideline",
+        "title": "IBM I: Toggle guideline above active line",
+        "category": "DDS"
+      },
+      {
+        "command": "dds-assist.toggleHighlight",
+        "title": "IBM I: Toggle field highlight on active line",
+        "category": "DDS"
+      }
+      ,
+      {
+        "command": "dds-assist.checkRpgle",
+        "title": "IBM I: Check and fix vscode-rpgle conflicts",
         "category": "DDS"
       }
     ],
@@ -38,29 +57,95 @@
       {
         "command": "dds-assist.nextField",
         "key": "pagedown",
-        "when": "editorTextFocus && (editorLangId == dds || editorLangId == dds.dspf || editorLangId == dds.lf || editorLangId == dds.pf)"
+        "when": "editorTextFocus && (editorLangId == dds || editorLangId == dds.dspf || editorLangId == dds.lf || editorLangId == dds.pf || editorLangId == rpg || editorLangId == rpgle || editorLangId == sqlrpgle)"
       },
       {
         "command": "dds-assist.prevField",
         "key": "pageup",
-        "when": "editorTextFocus && (editorLangId == dds || editorLangId == dds.dspf || editorLangId == dds.lf || editorLangId == dds.pf)"
-      }
-    ],
-    "languages": [
+        "when": "editorTextFocus && (editorLangId == dds || editorLangId == dds.dspf || editorLangId == dds.lf || editorLangId == dds.pf || editorLangId == rpg || editorLangId == rpgle || editorLangId == sqlrpgle)"
+      },
       {
-        "id": "dds",
-        "extensions": [".pf", ".lf", ".dspf", ".PF", ".LF", ".DSPF"],
-        "aliases": ["DDS"]
+        "command": "dds-assist.toggleGuideline",
+        "key": "shift+f3",
+        "when": "editorTextFocus && (editorLangId == dds || editorLangId == dds.dspf || editorLangId == dds.lf || editorLangId == dds.pf || editorLangId == rpg || editorLangId == rpgle || editorLangId == sqlrpgle)"
+      },
+      {
+        "command": "dds-assist.toggleHighlight",
+        "key": "shift+f2",
+        "when": "editorTextFocus && (editorLangId == dds || editorLangId == dds.dspf || editorLangId == dds.lf || editorLangId == dds.pf || editorLangId == rpg || editorLangId == rpgle || editorLangId == sqlrpgle)"
       }
     ],
     "menus": {
       "commandPalette": [
         {
           "command": "dds-assist.launchUI",
-          "when": "editorLangId == dds || editorLangId == dds.dspf || editorLangId == dds.lf || editorLangId == dds.pf"
+          "when": "editorLangId == dds || editorLangId == dds.dspf || editorLangId == dds.lf || editorLangId == dds.pf || editorLangId == rpg || editorLangId == rpgle || editorLangId == sqlrpgle"
         }
       ]
-    }
+    },
+    "configuration": {
+      "type": "object",
+      "title": "IBM I Column Assist",
+      "properties": {
+        "ddsColumnAssist.guideline.dspf": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show guideline above active line for DSPF (A-spec)"
+        },
+        "ddsColumnAssist.guideline.pf": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show guideline above active line for PF (A-spec)"
+        },
+        "ddsColumnAssist.guideline.lf": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show guideline above active line for LF (A-spec)"
+        },
+        "ddsColumnAssist.guideline.rpgleC": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show guideline above active line for RPGLE C-spec"
+        },
+        "ddsColumnAssist.guideline.rpgleD": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show guideline above active line for RPGLE D-spec"
+        },
+        "ddsColumnAssist.highlight.dspf": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight fields on DSPF A-spec lines"
+        },
+        "ddsColumnAssist.highlight.pf": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight fields on PF A-spec lines"
+        },
+        "ddsColumnAssist.highlight.lf": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight fields on LF A-spec lines"
+        },
+        "ddsColumnAssist.highlight.rpgleC": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight fields on RPGLE C-spec lines"
+        },
+        "ddsColumnAssist.highlight.rpgleD": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight fields on RPGLE D-spec lines"
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "dds",
+        "extensions": [".pf", ".lf", ".dspf", ".PF", ".LF", ".DSPF"],
+        "aliases": ["DDS"]
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -75,5 +160,9 @@
     "typescript": "^5.4.0",
     "vsce": "^2.15.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChriMasi/DDS-Column-Assist"
+  }
 }
