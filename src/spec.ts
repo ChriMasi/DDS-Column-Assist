@@ -11,8 +11,12 @@ export interface FieldDef {
 
 export const OUTLINE_PF_LF = ".....A..........T.Nome++++++RLun++TPdB......Funzioni++++++++++++++++++++++++++++";
 export const OUTLINE_DSPF = ".....AAN01N02N03T.Nome++++++RLun++TPdBRigColFunzioni++++++++++++++++++++++++++++";
-export const OUTLINE_RPG_C = ".....CL0N01Factor1+++++++Opcode&ExtFactor2+++++++Result++++++++Len++D+HiLoEq";
+export const OUTLINE_RPG_C = ".....CL0N01Factor1+++++++Opcode&ExtFactor2+++++++Result++++++++Len++D+HiLoEq....";
+export const OUTLINE_RPG_C_EXTENDED = ".....CL0N01Factor1+++++++Opcode&ExtExtended-factor2+++++++++++++++++++++++++++++";
 export const OUTLINE_RPG_D = ".....DName+++++++++++ETDsFrom+++To/L+++IDc.P.chiav.+++++++++++++++++++++++++++++";
+export const OUTLINE_RPG_F = ".....FFilename++IPEASFRlen+LKlen+AIDevice+.P.chiav.+++++++++++++++++++++++++++++";
+
+const EXTENDED_OPCODE_SET = new Set(['IF', 'EVAL', 'DO', 'DOU']);
 
 function findRunAfter(source: string, startIndex: number, char: string): { from: number; to: number } | undefined {
   let i = startIndex;
@@ -60,7 +64,10 @@ export function getOutlineForLine(langId: string, lineText: string): string {
   if (lid.indexOf('rpg') !== -1 || lid.startsWith('rpg')) {
     if (!lineText || lineText.length < 6) return OUTLINE_RPG_C;
     const spec = lineText[5].toUpperCase();
-    return spec === 'D' ? OUTLINE_RPG_D : OUTLINE_RPG_C;
+    if (spec === 'D') return OUTLINE_RPG_D;
+    if (spec === 'F') return OUTLINE_RPG_F;
+    const opcode = lineText.length >= 35 ? lineText.substring(25, 35).trim().toUpperCase() : '';
+    return EXTENDED_OPCODE_SET.has(opcode) ? OUTLINE_RPG_C_EXTENDED : OUTLINE_RPG_C;
   }
   return OUTLINE_PF_LF;
 }
@@ -73,7 +80,7 @@ export function buildFieldsFromOutline(outline: string, langId?: string): FieldD
   // Determina il tipo tramite langId o outline
   const lid = (langId || '').toLowerCase();
   const isDSPF = lid.endsWith('.dspf') || lid === 'dds.dspf' || outline === OUTLINE_DSPF;
-  const isRPG = lid.indexOf('rpg') !== -1 || lid.startsWith('rpg') || outline === OUTLINE_RPG_C || outline === OUTLINE_RPG_D;
+  const isRPG = lid.indexOf('rpg') !== -1 || lid.startsWith('rpg') || outline === OUTLINE_RPG_C || outline === OUTLINE_RPG_C_EXTENDED || outline === OUTLINE_RPG_D || outline === OUTLINE_RPG_F;
   if (isDSPF) {
     // DSPF mapping (colonne 1-based, start/end inclusi)
     // Unico campo Indicatori per la form (N01+N02+N03: colonne 8-16, index 7-15)
@@ -105,6 +112,33 @@ export function buildFieldsFromOutline(outline: string, langId?: string): FieldD
         { id: 'TipoDati', label: 'Tipo dati', start: 39, end: 39 },
         { id: 'DecPos', label: 'Posizioni decimali', start: 40, end: 41 },
         { id: 'ParChi', label: 'Parole chiave', start: 43, end: 79 },
+      ];
+    }
+    if (outline === OUTLINE_RPG_F) {
+      return [
+        { id: 'FileName', label: 'File name', start: 6, end: 15 },
+        { id: 'FileType', label: 'File type', start: 16, end: 16 },
+        { id: 'FileDesignation', label: 'File designation', start: 17, end: 17 },
+        { id: 'EndOfFile', label: 'End of file', start: 18, end: 18 },
+        { id: 'FileAddition', label: 'File addition', start: 19, end: 19 },
+        { id: 'Sequence', label: 'Sequence', start: 20, end: 20 },
+        { id: 'FileFormat', label: 'File format', start: 21, end: 21 },
+        { id: 'RecordLength', label: 'Record length', start: 22, end: 26 },
+        { id: 'LimitsProcessing', label: 'Limits processing', start: 27, end: 27 },
+        { id: 'KeyLength', label: 'Key length / record address', start: 28, end: 32 },
+        { id: 'RecordAddressType', label: 'Record address type', start: 33, end: 33 },
+        { id: 'FileOrganization', label: 'File organization', start: 34, end: 34 },
+        { id: 'Device', label: 'Device', start: 35, end: 41 },
+        { id: 'Keywords', label: 'Keywords', start: 43, end: 79 },
+      ];
+    }
+    if (outline === OUTLINE_RPG_C_EXTENDED) {
+      return [
+        { id: 'L0', label: 'Livello', start: 6, end: 7 },
+        { id: 'N01', label: 'Indicatore 1', start: 8, end: 10 },
+        { id: 'F1', label: 'Fattore 1', start: 11, end: 24 },
+        { id: 'OP', label: 'Operazione', start: 25, end: 34 },
+        { id: 'F2X', label: 'Fattore 2 esteso', start: 35, end: 79 },
       ];
     }
     return [

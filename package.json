@@ -2,7 +2,7 @@
   "name": "ibmi-column-assist",
   "displayName": "IBM I Column Assist",
   "description": "Column ruler and edit assistant for IBM i DDS (PF/LF/DSPF) lines with 'A' specification. and RPGLE lines with 'F' and 'C' Specification",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "Chri-Masi",
   "engines": {
     "vscode": "^1.75.0"
@@ -112,6 +112,11 @@
           "default": true,
           "description": "Show guideline above active line for RPGLE D-spec"
         },
+        "ddsColumnAssist.guideline.rpgleF": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show guideline above active line for RPGLE F-spec"
+        },
         "ddsColumnAssist.highlight.dspf": {
           "type": "boolean",
           "default": true,
@@ -136,6 +141,11 @@
           "type": "boolean",
           "default": true,
           "description": "Highlight fields on RPGLE D-spec lines"
+        },
+        "ddsColumnAssist.highlight.rpgleF": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight fields on RPGLE F-spec lines"
         }
       }
     },
@@ -152,6 +162,7 @@
     "compile": "tsc -p .",
     "watch": "tsc -w -p .",
     "build": "npm run compile",
+    "test": "npm run compile && node out/spec.test.js",
     "package": "vsce package"
   },
   "devDependencies": {

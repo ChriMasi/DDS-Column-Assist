@@ -13,13 +13,13 @@ async function moveToField(direction) {
         if (t.length < 6)
             return false;
         const spec = t[5].toUpperCase();
-        return (spec === 'A' || spec === 'C' || spec === 'D') && t[6] !== '*';
+        return (spec === 'A' || spec === 'C' || spec === 'D' || spec === 'F') && t[6] !== '*';
     };
     const isComment = (t) => {
         if (t.length < 7)
             return false;
         const spec = t[5].toUpperCase();
-        return (spec === 'A' || spec === 'C' || spec === 'D') && t[6] === '*';
+        return (spec === 'A' || spec === 'C' || spec === 'D' || spec === 'F') && t[6] === '*';
     };
     // Se PageUp e la riga corrente è commento: vai alla riga precedente come "campo singolo"
     if (direction === 'prev' && isComment(lineText)) {
@@ -61,7 +61,7 @@ async function moveToField(direction) {
         return;
     }
     // Se PageUp e la riga è vuota o non ha A in colonna 6 (non commento):
-    if (direction === 'prev' && (lineText.length < 6 || !['A', 'C', 'D'].includes(lineText[5].toUpperCase()))) {
+    if (direction === 'prev' && (lineText.length < 6 || !['A', 'C', 'D', 'F'].includes(lineText[5].toUpperCase()))) {
         const prevLineIdx = lineNum - 1;
         if (prevLineIdx >= 0) {
             const prevRaw = doc.lineAt(prevLineIdx).text;
@@ -83,7 +83,7 @@ async function moveToField(direction) {
             let l = lineNum - 1;
             while (l >= 0) {
                 const txt = doc.lineAt(l).text.padEnd(80);
-                if (txt.length >= 6 && ['A', 'C', 'D'].includes(txt[5].toUpperCase()) && txt[6] !== '*') {
+                if (txt.length >= 6 && ['A', 'C', 'D', 'F'].includes(txt[5].toUpperCase()) && txt[6] !== '*') {
                     const outline2 = (0, spec_1.getOutlineForLine)(doc.languageId, txt);
                     const fields2 = (0, spec_1.buildFieldsFromOutline)(outline2, doc.languageId);
                     return { line: l, fields: fields2 };
@@ -172,7 +172,7 @@ async function moveToField(direction) {
         let l = startLine;
         while (l >= 0 && l < doc.lineCount) {
             const txt = doc.lineAt(l).text.padEnd(80);
-            if (txt.length >= 6 && ['A', 'C', 'D'].includes(txt[5].toUpperCase()) && txt[6] !== '*') {
+            if (txt.length >= 6 && ['A', 'C', 'D', 'F'].includes(txt[5].toUpperCase()) && txt[6] !== '*') {
                 const outline2 = (0, spec_1.getOutlineForLine)(doc.languageId, txt);
                 const fields2 = (0, spec_1.buildFieldsFromOutline)(outline2, doc.languageId);
                 return { line: l, fields: fields2, docLine: txt };
@@ -290,7 +290,11 @@ function getSpecIdForLine(doc, lineText) {
         if (!lineText || lineText.length < 6)
             return 'rpgleC';
         const spec = lineText[5].toUpperCase();
-        return spec === 'D' ? 'rpgleD' : 'rpgleC';
+        if (spec === 'D')
+            return 'rpgleD';
+        if (spec === 'F')
+            return 'rpgleF';
+        return 'rpgleC';
     }
     return 'other';
 }
@@ -360,7 +364,7 @@ function updateRuler() {
     if (lineText.length < 6)
         return clearRuler();
     const specChar = lineText[5].toUpperCase();
-    if (!['A', 'C', 'D'].includes(specChar) || lineText[6] === '*')
+    if (!['A', 'C', 'D', 'F'].includes(specChar) || lineText[6] === '*')
         return clearRuler();
     const outline = (0, spec_1.getOutlineForLine)(doc.languageId, lineText);
     const deco = ensureDecoration();
@@ -450,7 +454,7 @@ function getFieldsForCurrentLine() {
     if (lineText.length < 6)
         return;
     const specC = lineText[5].toUpperCase();
-    if (!['A', 'C', 'D'].includes(specC) || lineText[6] === '*')
+    if (!['A', 'C', 'D', 'F'].includes(specC) || lineText[6] === '*')
         return;
     const outline = (0, spec_1.getOutlineForLine)(doc.languageId, lineText);
     const fields = (0, spec_1.buildFieldsFromOutline)(outline, doc.languageId);

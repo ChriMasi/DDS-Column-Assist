@@ -6,14 +6,14 @@
 
 ## Versione italiana
 
-**IBM I Column Assist** è un'estensione VS Code che fornisce una guida a colonne e un assist per la modifica delle linee DDS (PF/LF/DSPF) e per RPGLE (C/D-spec).  
+**IBM I Column Assist** è un'estensione VS Code che fornisce una guida a colonne e un assist per la modifica delle linee DDS (PF/LF/DSPF) e per RPGLE (C/D/F-spec).  
 
 ### Caratteristiche principali
 
 - Mostra una *guideline* (riga guida) sopra la linea attiva che riporta l'outline dei campi.
 - Evidenzia il campo corrente (e gli altri campi) sulla riga attiva.
 - Navigazione tra i campi con **PageDown** (campo successivo) e **PageUp** (campo precedente).
-- Supporto per i file DDS (`.pf`, `.lf`, `.dspf`) e per RPGLE (`rpg`, `rpgle`, `sqlrpgle`), con differenziazione della specifica C o D basata sul carattere in colonna 6 della riga.
+- Supporto per i file DDS (`.pf`, `.lf`, `.dspf`) e per RPGLE (`rpg`, `rpgle`, `sqlrpgle`), con differenziazione della specifica C, D o F basata sul carattere in colonna 6 della riga.
 - Un comando UI che apre un piccolo pannello per modificare i campi in modo strutturato.
 
 ### Conflitto con `vscode-rpgle`
@@ -39,6 +39,7 @@ Le impostazioni sono organizzate per tipo di file e specifica:
 - `ddsColumnAssist.guideline.lf` (boolean)
 - `ddsColumnAssist.guideline.rpgleC` (boolean)
 - `ddsColumnAssist.guideline.rpgleD` (boolean)
+- `ddsColumnAssist.guideline.rpgleF` (boolean)
 - `ddsColumnAssist.highlight.*` corrispondenti per ogni tipo
 
 ### Scorciatoie
@@ -66,14 +67,14 @@ Queste impostazioni definiscono il comportamento di default; è possibile modifi
 
 ## English version
 
-**IBM I Column Assist** is a VS Code extension providing a column guideline and edit assistant for IBM i DDS (PF/LF/DSPF) and RPGLE (C/D-spec) lines.  
+**IBM I Column Assist** is a VS Code extension providing a column guideline and edit assistant for IBM i DDS (PF/LF/DSPF) and RPGLE (C/D/F-spec) lines.  
 
 ### Main features
 
 - Shows a guideline above the active line with the field outline.
 - Highlights the current field (and other fields) on the active line.
 - Navigate fields with **PageDown** (next field) and **PageUp** (previous field).
-- Supports DDS files (`.pf`, `.lf`, `.dspf`) and RPGLE (`rpg`, `rpgle`, `sqlrpgle`). For RPGLE the spec (C or D) is chosen by the character in column 6 of the line.
+- Supports DDS files (`.pf`, `.lf`, `.dspf`) and RPGLE (`rpg`, `rpgle`, `sqlrpgle`). For RPGLE the spec (C, D or F) is chosen by the character in column 6 of the line.
 - A small UI panel to edit fields in a structured way.
 
 ### Conflict with `vscode-rpgle`
@@ -98,6 +99,7 @@ The extension exposes per-file/per-spec settings:
 - `ddsColumnAssist.guideline.lf` (boolean)
 - `ddsColumnAssist.guideline.rpgleC` (boolean)
 - `ddsColumnAssist.guideline.rpgleD` (boolean)
+- `ddsColumnAssist.guideline.rpgleF` (boolean)
 - `ddsColumnAssist.highlight.*` per type
 
 ### Shortcuts
